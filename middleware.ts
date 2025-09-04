@@ -8,9 +8,10 @@ const RESPONSE_TOKEN = '9a3mg723udpj16uyqdpc2fph4022ruy4ewg3wf8pu';
 // Allowed OpenPlatform domains
 const ALLOWED_DOMAINS = [
   'openplatform.com',
-  'flow.inspiraus.work',
+  'flowchat.inspiraus.work',
   'localhost', // For development
   '127.0.0.1', // For development
+  '*' // Allow all domains for iframe embedding
 ];
 
 function md5(data: string): string {
@@ -57,15 +58,14 @@ async function verifyOpenPlatformToken(openplatform: string): Promise<any | null
 }
 
 function isAllowedDomain(referer: string | null): boolean {
-  if (!referer) return false;
+  if (!referer) return true; // Allow requests without referer
 
   try {
     const url = new URL(referer);
-    return ALLOWED_DOMAINS.some(domain =>
-      url.hostname === domain || url.hostname.endsWith('.' + domain)
-    );
+    // Allow all domains for iframe embedding
+    return true;
   } catch {
-    return false;
+    return true; // Allow if URL parsing fails
   }
 }
 

@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value: [
-              "frame-ancestors https://flow.inspiraus.work https://openplatform.com",
+              "frame-ancestors *",
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
