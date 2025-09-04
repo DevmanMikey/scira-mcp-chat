@@ -4,10 +4,23 @@ import { checkBotId } from "botid/server";
 
 export async function GET(request: Request) {
   try {
-    const userId = request.headers.get('x-user-id');
+    // Get user ID from OpenPlatform cookie
+    let userId: string | null = null;
+    const cookies = request.headers.get('cookie');
+    if (cookies) {
+      const openplatformUserCookie = cookies.split(';').find(c => c.trim().startsWith('openplatform_user='));
+      if (openplatformUserCookie) {
+        try {
+          const userData = JSON.parse(decodeURIComponent(openplatformUserCookie.split('=')[1]));
+          userId = userData.openplatformid;
+        } catch (error) {
+          console.error('Failed to parse OpenPlatform user data:', error);
+        }
+      }
+    }
 
     if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      return NextResponse.json({ error: "User authentication required" }, { status: 401 });
     }
 
     const chats = await getChats(userId);

@@ -4,6 +4,9 @@ import {
   modelDetails,
   type modelID,
   defaultModel,
+  aimlModel,
+  aimlModelDetails,
+  type aimlModelID,
 } from "@/ai/providers";
 import {
   Select,
@@ -30,25 +33,29 @@ import {
 import { useState, useEffect } from "react";
 
 interface ModelPickerProps {
-  selectedModel: modelID;
-  setSelectedModel: (model: modelID) => void;
+  selectedModel: modelID | aimlModelID;
+  setSelectedModel: (model: modelID | aimlModelID) => void;
 }
 
 export const ModelPicker = ({
   selectedModel,
   setSelectedModel,
 }: ModelPickerProps) => {
-  const [hoveredModel, setHoveredModel] = useState<modelID | null>(null);
+  const [hoveredModel, setHoveredModel] = useState<modelID | aimlModelID | null>(null);
+
+  // Combine all models and their details
+  const allModels = [...MODELS, ...Object.keys(aimlModelDetails)] as (modelID | aimlModelID)[];
+  const allModelDetails = { ...modelDetails, ...aimlModelDetails };
 
   // Ensure we always have a valid model ID
-  const validModelId = MODELS.includes(selectedModel)
+  const validModelId = allModels.includes(selectedModel)
     ? selectedModel
     : defaultModel;
 
   // If the selected model is invalid, update it to the default
   useEffect(() => {
     if (selectedModel !== validModelId) {
-      setSelectedModel(validModelId as modelID);
+      setSelectedModel(validModelId as modelID | aimlModelID);
     }
   }, [selectedModel, validModelId, setSelectedModel]);
 
@@ -63,8 +70,14 @@ export const ModelPicker = ({
         return <Zap className="h-3 w-3 text-red-500" />;
       case "groq":
         return <Sparkles className="h-3 w-3 text-blue-500" />;
-      case "xai":
-        return <Sparkles className="h-3 w-3 text-yellow-500" />;
+      case "aiml api":
+        return <Bot className="h-3 w-3 text-purple-500" />;
+      case "deepseek":
+        return <Brain className="h-3 w-3 text-cyan-500" />;
+      case "mistral":
+        return <Bolt className="h-3 w-3 text-indigo-500" />;
+      case "perplexity":
+        return <Lightbulb className="h-3 w-3 text-yellow-600" />;
       default:
         return <Info className="h-3 w-3 text-blue-500" />;
     }
@@ -125,12 +138,12 @@ export const ModelPicker = ({
 
   // Get current model details to display
   const displayModelId = hoveredModel || validModelId;
-  const currentModelDetails = modelDetails[displayModelId];
+  const currentModelDetails = allModelDetails[displayModelId as keyof typeof allModelDetails];
 
   // Handle model change
   const handleModelChange = (modelId: string) => {
-    if (MODELS.includes(modelId)) {
-      const typedModelId = modelId as modelID;
+    if (allModels.includes(modelId as modelID | aimlModelID)) {
+      const typedModelId = modelId as modelID | aimlModelID;
       setSelectedModel(typedModelId);
     }
   };
@@ -148,9 +161,9 @@ export const ModelPicker = ({
             className="text-xs font-medium flex items-center gap-1 sm:gap-2 text-primary dark:text-primary-foreground"
           >
             <div className="flex items-center gap-1 sm:gap-2">
-              {getProviderIcon(modelDetails[validModelId].provider)}
+              {getProviderIcon(allModelDetails[validModelId as keyof typeof allModelDetails].provider)}
               <span className="font-medium truncate">
-                {modelDetails[validModelId].name}
+                {allModelDetails[validModelId as keyof typeof allModelDetails].name}
               </span>
             </div>
           </SelectValue>
@@ -163,8 +176,8 @@ export const ModelPicker = ({
             {/* Model selector column */}
             <div className="sm:border-r border-border/40 bg-muted/20 p-0 pr-1">
               <SelectGroup className="space-y-1">
-                {MODELS.map((id) => {
-                  const modelId = id as modelID;
+                {allModels.map((id) => {
+                  const modelId = id as modelID | aimlModelID;
                   return (
                     <SelectItem
                       key={id}
@@ -182,13 +195,13 @@ export const ModelPicker = ({
                     >
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
-                          {getProviderIcon(modelDetails[modelId].provider)}
+                          {getProviderIcon(allModelDetails[modelId as keyof typeof allModelDetails].provider)}
                           <span className="font-medium truncate">
-                            {modelDetails[modelId].name}
+                            {allModelDetails[modelId as keyof typeof allModelDetails].name}
                           </span>
                         </div>
                         <span className="text-[10px] sm:text-xs text-muted-foreground">
-                          {modelDetails[modelId].provider}
+                          {allModelDetails[modelId as keyof typeof allModelDetails].provider}
                         </span>
                       </div>
                     </SelectItem>

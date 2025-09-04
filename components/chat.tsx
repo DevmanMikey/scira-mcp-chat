@@ -1,6 +1,6 @@
 "use client";
 
-import { defaultModel, type modelID } from "@/ai/providers";
+import { defaultModel, type modelID, type aimlModelID } from "@/ai/providers";
 import { Message, useChat } from "@ai-sdk/react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Textarea } from "./textarea";
@@ -30,7 +30,7 @@ export default function Chat() {
   const chatId = params?.id as string | undefined;
   const queryClient = useQueryClient();
   
-  const [selectedModel, setSelectedModel] = useLocalStorage<modelID>("selectedModel", defaultModel);
+  const [selectedModel, setSelectedModel] = useLocalStorage<modelID | aimlModelID>("selectedModel", defaultModel);
   const [userId, setUserId] = useState<string>('');
   const [generatedChatId, setGeneratedChatId] = useState<string>('');
   

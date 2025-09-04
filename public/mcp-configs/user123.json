@@ -1,0 +1,34 @@
+{
+  "servers": [
+    {
+      "id": "user-sample-server-1",
+      "name": "User's GitHub MCP Server",
+      "url": "https://github-mcp.example.com/sse",
+      "type": "sse",
+      "description": "Personal GitHub integration server",
+      "status": "disconnected",
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer gh_token_here"
+        }
+      ]
+    },
+    {
+      "id": "user-sample-server-2",
+      "name": "User's Database MCP Server",
+      "url": "https://db-mcp.example.com/sse",
+      "type": "sse",
+      "description": "Personal database query server",
+      "status": "disconnected",
+      "env": [
+        {
+          "key": "DATABASE_URL",
+          "value": "postgresql://user:pass@localhost:5432/mydb"
+        }
+      ]
+    }
+  ],
+  "selectedServers": ["user-sample-server-1"],
+  "lastUpdated": "2025-09-04T16:30:00.000Z"
+}

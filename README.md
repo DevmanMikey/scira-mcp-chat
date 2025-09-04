@@ -1,10 +1,6 @@
-<a href="https://mcp.scira.ai">
-  <h1 align="center">Scira MCP Chat</h1>
-</a>
+# Inspiraus Flow
 
-<p align="center">
-  An open-source AI chatbot app powered by Model Context Protocol (MCP), built with Next.js and the AI SDK by Vercel.
-</p>
+An open-source AI chatbot app powered by Model Context Protocol (MCP), built with Next.js and the AI SDK by Vercel.
 
 <p align="center">
   <a href="#features"><strong>Features</strong></a> •

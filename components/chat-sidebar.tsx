@@ -11,7 +11,6 @@ import {
   Sparkles,
   ChevronsUpDown,
   Copy,
-  Pencil,
   Github,
   Key,
 } from "lucide-react";
@@ -37,7 +36,7 @@ import Image from "next/image";
 import { MCPServerManager } from "./mcp-server-manager";
 import { ApiKeyManager } from "./api-key-manager";
 import { ThemeToggle } from "./theme-toggle";
-import { getUserId, updateUserId } from "@/lib/user-id";
+import { useOpenPlatformUser } from "@/lib/hooks/use-openplatform-user";
 import { useChats } from "@/lib/hooks/use-chats";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -51,16 +50,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useMCP } from "@/lib/context/mcp-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "motion/react";
@@ -68,13 +57,10 @@ import { AnimatePresence, motion } from "motion/react";
 export function ChatSidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const [userId, setUserId] = useState<string>("");
   const [mcpSettingsOpen, setMcpSettingsOpen] = useState(false);
   const [apiKeySettingsOpen, setApiKeySettingsOpen] = useState(false);
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const [editUserIdOpen, setEditUserIdOpen] = useState(false);
-  const [newUserId, setNewUserId] = useState("");
 
   // Get MCP server data from context
   const {
@@ -82,15 +68,33 @@ export function ChatSidebar() {
     setMcpServers,
     selectedMcpServers,
     setSelectedMcpServers,
+    loadUserMCPConfig,
+    saveUserMCPConfig,
   } = useMCP();
 
-  // Initialize userId
+  // Use OpenPlatform user hook
+  const { user: openPlatformUser, loading: userLoading } = useOpenPlatformUser();
+
+  // Load user-specific MCP config when user changes
   useEffect(() => {
-    setUserId(getUserId());
-  }, []);
+    if (openPlatformUser?.openplatformid) {
+      loadUserMCPConfig(openPlatformUser.openplatformid);
+    }
+  }, [openPlatformUser?.openplatformid, loadUserMCPConfig]);
+
+  // Save MCP config when it changes
+  useEffect(() => {
+    if (openPlatformUser?.openplatformid && (mcpServers.length > 0 || selectedMcpServers.length > 0)) {
+      const timeoutId = setTimeout(() => {
+        saveUserMCPConfig(openPlatformUser.openplatformid);
+      }, 1000); // Debounce saves
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [mcpServers, selectedMcpServers, openPlatformUser?.openplatformid, saveUserMCPConfig]);
 
   // Use TanStack Query to fetch chats
-  const { chats, isLoading, deleteChat, refreshChats } = useChats(userId);
+  const { chats, isLoading, deleteChat, refreshChats } = useChats(openPlatformUser?.openplatformid || "");
 
   // Start a new chat
   const handleNewChat = () => {
@@ -113,24 +117,8 @@ export function ChatSidebar() {
   // Get active MCP servers status
   const activeServersCount = selectedMcpServers.length;
 
-  // Handle user ID update
-  const handleUpdateUserId = () => {
-    if (!newUserId.trim()) {
-      toast.error("User ID cannot be empty");
-      return;
-    }
-
-    updateUserId(newUserId.trim());
-    setUserId(newUserId.trim());
-    setEditUserIdOpen(false);
-    toast.success("User ID updated successfully");
-
-    // Refresh the page to reload chats with new user ID
-    window.location.reload();
-  };
-
-  // Show loading state if user ID is not yet initialized
-  if (!userId) {
+  // Show loading state if user is not yet loaded
+  if (userLoading || !openPlatformUser) {
     return null; // Or a loading spinner
   }
 
@@ -174,15 +162,9 @@ export function ChatSidebar() {
                 isCollapsed ? "size-5 p-3" : "size-6"
               }`}
             >
-              <Image
-                src="/scira.png"
-                alt="Scira Logo"
-                width={24}
-                height={24}
-                className="absolute transform scale-75"
-                unoptimized
-                quality={100}
-              />
+              <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10">
+                <MessageSquare className="h-4 w-4 text-primary" />
+              </div>
             </div>
             {!isCollapsed && (
               <div className="font-semibold text-lg text-foreground/90">
@@ -390,7 +372,7 @@ export function ChatSidebar() {
                 >
                   <Avatar className="h-6 w-6 rounded-lg bg-secondary/60">
                     <AvatarFallback className="rounded-lg text-xs font-medium text-secondary-foreground">
-                      {userId.substring(0, 2).toUpperCase()}
+                      {openPlatformUser?.name?.substring(0, 2).toUpperCase() || "OP"}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -402,15 +384,15 @@ export function ChatSidebar() {
                   <div className="flex items-center gap-2">
                     <Avatar className="h-7 w-7 rounded-lg bg-secondary/60">
                       <AvatarFallback className="rounded-lg text-sm font-medium text-secondary-foreground">
-                        {userId.substring(0, 2).toUpperCase()}
+                        {openPlatformUser?.name?.substring(0, 2).toUpperCase() || "OP"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid text-left text-sm leading-tight">
                       <span className="truncate font-medium text-foreground/90">
-                        User ID
+                        {openPlatformUser?.name || "OpenPlatform User"}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {userId.substring(0, 16)}...
+                        {openPlatformUser?.email || openPlatformUser?.openplatformid}
                       </span>
                     </div>
                   </div>
@@ -428,15 +410,15 @@ export function ChatSidebar() {
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg bg-secondary/60">
                     <AvatarFallback className="rounded-lg text-sm font-medium text-secondary-foreground">
-                      {userId.substring(0, 2).toUpperCase()}
+                      {openPlatformUser?.name?.substring(0, 2).toUpperCase() || "OP"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold text-foreground/90">
-                      User ID
+                      {openPlatformUser?.name || "OpenPlatform User"}
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {userId}
+                      {openPlatformUser?.email || openPlatformUser?.openplatformid}
                     </span>
                   </div>
                 </div>
@@ -446,21 +428,12 @@ export function ChatSidebar() {
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
-                    navigator.clipboard.writeText(userId);
-                    toast.success("User ID copied to clipboard");
+                    navigator.clipboard.writeText(openPlatformUser?.openplatformid || "");
+                    toast.success("OpenPlatform ID copied to clipboard");
                   }}
                 >
                   <Copy className="mr-2 h-4 w-4 hover:text-sidebar-accent" />
-                  Copy User ID
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setEditUserIdOpen(true);
-                  }}
-                >
-                  <Pencil className="mr-2 h-4 w-4 hover:text-sidebar-accent" />
-                  Edit User ID
+                  Copy OpenPlatform ID
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -520,43 +493,6 @@ export function ChatSidebar() {
           onOpenChange={setApiKeySettingsOpen}
         />
       </SidebarFooter>
-
-      <Dialog
-        open={editUserIdOpen}
-        onOpenChange={(open) => {
-          setEditUserIdOpen(open);
-          if (open) {
-            setNewUserId(userId);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Edit User ID</DialogTitle>
-            <DialogDescription>
-              Update your user ID for chat synchronization. This will affect
-              which chats are visible to you.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="userId">User ID</Label>
-              <Input
-                id="userId"
-                value={newUserId}
-                onChange={(e) => setNewUserId(e.target.value)}
-                placeholder="Enter your user ID"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUserIdOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateUserId}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Sidebar>
   );
 }

@@ -2,21 +2,34 @@ import { NextResponse } from "next/server";
 import { getChatById, deleteChat } from "@/lib/chat-store";
 import { checkBotId } from "botid/server";
 
-interface Params {
-  params: {
+interface RouteContext {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export async function GET(request: Request, { params }: Params) {
+export async function GET(request: Request, context: RouteContext) {
   try {
-    const userId = request.headers.get('x-user-id');
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    // Get user ID from OpenPlatform cookie
+    let userId: string | null = null;
+    const cookies = request.headers.get('cookie');
+    if (cookies) {
+      const openplatformUserCookie = cookies.split(';').find(c => c.trim().startsWith('openplatform_user='));
+      if (openplatformUserCookie) {
+        try {
+          const userData = JSON.parse(decodeURIComponent(openplatformUserCookie.split('=')[1]));
+          userId = userData.openplatformid;
+        } catch (error) {
+          console.error('Failed to parse OpenPlatform user data:', error);
+        }
+      }
     }
 
-    const { id } = await params;
+    if (!userId) {
+      return NextResponse.json({ error: "User authentication required" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
     const chat = await getChatById(id, userId);
 
     if (!chat) {
@@ -36,15 +49,28 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
-    const userId = request.headers.get('x-user-id');
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    // Get user ID from OpenPlatform cookie
+    let userId: string | null = null;
+    const cookies = request.headers.get('cookie');
+    if (cookies) {
+      const openplatformUserCookie = cookies.split(';').find(c => c.trim().startsWith('openplatform_user='));
+      if (openplatformUserCookie) {
+        try {
+          const userData = JSON.parse(decodeURIComponent(openplatformUserCookie.split('=')[1]));
+          userId = userData.openplatformid;
+        } catch (error) {
+          console.error('Failed to parse OpenPlatform user data:', error);
+        }
+      }
     }
 
-    const { id } = await params;
+    if (!userId) {
+      return NextResponse.json({ error: "User authentication required" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
     await deleteChat(id, userId);
     return NextResponse.json({ success: true });
   } catch (error) {

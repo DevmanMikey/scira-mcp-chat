@@ -1,4 +1,4 @@
-import { model, type modelID } from "@/ai/providers";
+import { model, type modelID, aimlModel, type aimlModelID } from "@/ai/providers";
 import { smoothStream, streamText, type UIMessage } from "ai";
 import { appendResponseMessages } from 'ai';
 import { saveChat, saveMessages, convertToDBMessages } from '@/lib/chat-store';
@@ -16,13 +16,13 @@ export async function POST(req: Request) {
     messages,
     chatId,
     selectedModel,
-    userId,
+    userId: providedUserId,
     mcpServers = [],
   }: {
     messages: UIMessage[];
     chatId?: string;
-    selectedModel: modelID;
-    userId: string;
+    selectedModel: modelID | aimlModelID;
+    userId?: string;
     mcpServers?: MCPServerConfig[];
   } = await req.json();
 
@@ -35,10 +35,27 @@ export async function POST(req: Request) {
     );
   }
 
+  // Get user ID from OpenPlatform cookie or provided userId
+  let userId = providedUserId;
+  if (!userId) {
+    const cookies = req.headers.get('cookie');
+    if (cookies) {
+      const openplatformUserCookie = cookies.split(';').find(c => c.trim().startsWith('openplatform_user='));
+      if (openplatformUserCookie) {
+        try {
+          const userData = JSON.parse(decodeURIComponent(openplatformUserCookie.split('=')[1]));
+          userId = userData.openplatformid;
+        } catch (error) {
+          console.error('Failed to parse OpenPlatform user data:', error);
+        }
+      }
+    }
+  }
+
   if (!userId) {
     return new Response(
-      JSON.stringify({ error: "User ID is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: "User authentication required" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -101,8 +118,13 @@ export async function POST(req: Request) {
   // Track if the response has completed
   let responseCompleted = false;
 
+  // Determine which provider to use based on the selected model
+  const aimlModelIds = ['qwen3-32b-aiml', 'deepseek-chat', 'gpt-oss-20b', 'gpt-5-chat', 'mistral-7b', 'sonar'];
+  const isAIMLModel = aimlModelIds.includes(selectedModel);
+  const selectedProvider = isAIMLModel ? aimlModel : model;
+
   const result = streamText({
-    model: model.languageModel(selectedModel),
+    model: selectedProvider.languageModel(selectedModel as any),
     system: `You are a helpful assistant with access to a variety of tools.
 
     Today's date is ${new Date().toISOString().split('T')[0]}.

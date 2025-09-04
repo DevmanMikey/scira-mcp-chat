@@ -1,0 +1,25 @@
+{
+  "servers": [
+    {
+      "id": "sample-mcp-server",
+      "name": "Sample MCP Server",
+      "url": "https://mcp.example.com/sse",
+      "type": "sse",
+      "description": "A sample MCP server for demonstration",
+      "status": "disconnected",
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer your-token-here"
+        }
+      ],
+      "env": [
+        {
+          "key": "API_KEY",
+          "value": "your-api-key-here"
+        }
+      ]
+    }
+  ],
+  "selectedServers": []
+}

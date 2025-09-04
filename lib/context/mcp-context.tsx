@@ -61,6 +61,8 @@ interface MCPContextType {
     errorMessage?: string
   ) => void;
   getActiveServersForApi: () => MCPServerApi[];
+  loadUserMCPConfig: (userId: string) => Promise<void>;
+  saveUserMCPConfig: (userId: string) => Promise<void>;
 }
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
@@ -231,6 +233,66 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Load user-specific MCP configuration from API
+  const loadUserMCPConfig = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/mcp-config/${userId}`);
+      if (response.ok) {
+        const config = await response.json();
+        if (config.servers) {
+          setMcpServers(config.servers);
+        }
+        if (config.selectedServers) {
+          setSelectedMcpServers(config.selectedServers);
+        }
+      } else {
+        console.error('Failed to load MCP config:', response.statusText);
+        // Fallback to empty config
+        setMcpServers([]);
+        setSelectedMcpServers([]);
+      }
+    } catch (error) {
+      console.error('Failed to load MCP config for user:', userId, error);
+      // Fallback to empty config
+      setMcpServers([]);
+      setSelectedMcpServers([]);
+    }
+  };
+
+  // Save user-specific MCP configuration via API
+  const saveUserMCPConfig = async (userId: string) => {
+    try {
+      const config = {
+        servers: mcpServers,
+        selectedServers: selectedMcpServers,
+        lastUpdated: new Date().toISOString()
+      };
+
+      const response = await fetch(`/api/mcp-config/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save config: ${response.statusText}`);
+      }
+
+      console.log('MCP config saved for user:', userId);
+    } catch (error) {
+      console.error('Failed to save MCP config for user:', userId, error);
+      // Fallback: save to localStorage
+      const configKey = `mcp-config-${userId}`;
+      localStorage.setItem(configKey, JSON.stringify({
+        servers: mcpServers,
+        selectedServers: selectedMcpServers,
+        lastUpdated: new Date().toISOString()
+      }));
+    }
+  };
+
   // Calculate mcpServersForApi based on current state
   const mcpServersForApi = getActiveServersForApi();
 
@@ -246,6 +308,8 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
         stopServer,
         updateServerStatus,
         getActiveServersForApi,
+        loadUserMCPConfig,
+        saveUserMCPConfig,
       }}
     >
       {children}

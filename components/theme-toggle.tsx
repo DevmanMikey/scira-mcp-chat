@@ -34,20 +34,20 @@ export function ThemeToggle({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => setTheme("dark")}>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Flame className="mr-2 h-4 w-4" />
           <span>Dark</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme("light")}>
+        <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           <span>Light</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme("black")}>
+        <DropdownMenuItem onClick={() => setTheme("black")}>
           <CircleDashed className="mr-2 h-4 w-4" />
           <span>Black</span>
         </DropdownMenuItem>
         {/* sunset theme */}
-        <DropdownMenuItem onSelect={() => setTheme("sunset")}>
+        <DropdownMenuItem onClick={() => setTheme("sunset")}>
           <Sun className="mr-2 h-4 w-4" />
           <span>Sunset</span>
         </DropdownMenuItem>

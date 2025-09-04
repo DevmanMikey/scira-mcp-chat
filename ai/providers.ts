@@ -1,5 +1,5 @@
 import { createGroq } from "@ai-sdk/groq";
-import { createXai } from "@ai-sdk/xai";
+import { createOpenAI } from "@ai-sdk/openai";
 
 import {
   customProvider,
@@ -38,8 +38,9 @@ const groqClient = createGroq({
   apiKey: getApiKey('GROQ_API_KEY'),
 });
 
-const xaiClient = createXai({
-  apiKey: getApiKey('XAI_API_KEY'),
+const aimlClient = createOpenAI({
+  apiKey: getApiKey('AIML_API_KEY'),
+  baseURL: 'https://api.aimlapi.com/v1',
 });
 
 const languageModels = {
@@ -49,9 +50,17 @@ const languageModels = {
       middleware
     }
   ),
-  "grok-3-mini": xaiClient("grok-3-mini-latest"),
   "kimi-k2": groqClient('moonshotai/kimi-k2-instruct'),
   "llama4": groqClient('meta-llama/llama-4-scout-17b-16e-instruct')
+};
+
+const aimlModels = {
+  "qwen3-32b-aiml": aimlClient("alibaba/qwen3-32b"),
+  "deepseek-chat": aimlClient("deepseek/deepseek-chat-v3.1"),
+  "gpt-oss-20b": aimlClient("openai/gpt-oss-20b"),
+  "gpt-5-chat": aimlClient("openai/gpt-5-chat-latest"),
+  "mistral-7b": aimlClient("mistralai/Mistral-7B-Instruct-v0.3"),
+  "sonar": aimlClient("perplexity/sonar")
 };
 
 export const modelDetails: Record<keyof typeof languageModels, ModelInfo> = {
@@ -69,19 +78,57 @@ export const modelDetails: Record<keyof typeof languageModels, ModelInfo> = {
     apiVersion: "qwen3-32b",
     capabilities: ["Reasoning", "Efficient", "Agentic"]
   },
-  "grok-3-mini": {
-    provider: "XAI",
-    name: "Grok 3 Mini",
-    description: "Latest version of XAI's Grok 3 Mini with strong reasoning and coding capabilities.",
-    apiVersion: "grok-3-mini-latest",
-    capabilities: ["Reasoning", "Efficient", "Agentic"]
-  },
   "llama4": {
     provider: "Groq",
     name: "Llama 4",
     description: "Latest version of Meta's Llama 4 with good balance of capabilities.",
     apiVersion: "llama-4-scout-17b-16e-instruct",
     capabilities: ["Balanced", "Efficient", "Agentic"]
+  }
+};
+
+export const aimlModelDetails: Record<keyof typeof aimlModels, ModelInfo> = {
+  "qwen3-32b-aiml": {
+    provider: "AIML API",
+    name: "Qwen 3 32B (AIML)",
+    description: "Alibaba's Qwen 3 32B model via AIML API - excellent for reasoning and coding tasks.",
+    apiVersion: "alibaba/qwen3-32b",
+    capabilities: ["Reasoning", "Coding", "Analysis", "Agentic"]
+  },
+  "deepseek-chat": {
+    provider: "AIML API",
+    name: "DeepSeek Chat v3.1",
+    description: "DeepSeek's advanced chat model via AIML API - strong reasoning capabilities.",
+    apiVersion: "deepseek/deepseek-chat-v3.1",
+    capabilities: ["Reasoning", "Coding", "Efficient"]
+  },
+  "gpt-oss-20b": {
+    provider: "AIML API",
+    name: "GPT OSS 20B",
+    description: "Open-source GPT model with 20B parameters via AIML API - excellent general-purpose AI.",
+    apiVersion: "openai/gpt-oss-20b",
+    capabilities: ["Reasoning", "Coding", "Multimodal", "Agentic"]
+  },
+  "gpt-5-chat": {
+    provider: "AIML API",
+    name: "GPT-5 Chat Latest",
+    description: "Latest GPT-5 model via AIML API - cutting-edge AI capabilities.",
+    apiVersion: "openai/gpt-5-chat-latest",
+    capabilities: ["Reasoning", "Coding", "Multimodal", "Agentic"]
+  },
+  "mistral-7b": {
+    provider: "AIML API",
+    name: "Mistral 7B Instruct",
+    description: "Mistral AI's 7B parameter model via AIML API - efficient and capable.",
+    apiVersion: "mistralai/Mistral-7B-Instruct-v0.3",
+    capabilities: ["Efficient", "Reasoning", "Coding"]
+  },
+  "sonar": {
+    provider: "AIML API",
+    name: "Perplexity Sonar",
+    description: "Perplexity's Sonar model via AIML API - specialized for search and analysis.",
+    apiVersion: "perplexity/sonar",
+    capabilities: ["Search", "Analysis", "Research", "Agentic"]
   }
 };
 
@@ -99,8 +146,13 @@ export const model = customProvider({
   languageModels,
 });
 
+export const aimlModel = customProvider({
+  languageModels: aimlModels,
+});
+
 export type modelID = keyof typeof languageModels;
+export type aimlModelID = keyof typeof aimlModels;
 
 export const MODELS = Object.keys(languageModels);
 
-export const defaultModel: modelID = "kimi-k2";
+export const defaultModel: aimlModelID = "gpt-oss-20b";

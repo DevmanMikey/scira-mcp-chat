@@ -1,0 +1,149 @@
+Title: OpenPlatform v5
+
+URL Source: https://docs.totaljs.com/openplatform/x979001kb41d/
+
+Markdown Content:
+Integration is very simple between OpenPlatform and 3rd party apps. A platform makes a request to a third party app, and the third party app must call back to the platform, which returns a user profile.
+
+**Don't forget**
+
+Every added third-party app must be assigned to a group.
+**OpenPlatform supports two security tokens:**
+
+*   request token
+*   response token
+
+The request token is used to sign request data, and the response token is used to sign responses from 3rd party apps.
+
+Example
+-------
+
+*   you registered an app with the URL address `https://www.yourapp.com`
+*   OpenPlatform will run it in the iframe in this form:
+
+`https://www.yourapp.com?openplatform=https%3A//www.youropenplatform.com/verify/%3Ftoken%3D123456%7E98e8b5969ce8ff66383ffb690e5555b5`
+
+`?openplatform=URL` argument contains URL address to the OpenPlatform instance with the token. This URL address must be requested with a signature from your backend/server.
+
+### Signature
+
+First you need to check if the value stored in the `openplatform` argument is valid.
+
+```
+---- Encoded:
+https%3A//www.youropenplatform.com/verify/%3Ftoken%3D123456%7E98e8b5969ce8ff66383ffb690e5555b5
+
+---- Parsed:
+https://www.youropenplatform.com/verify/?token=123456~98e8b5969ce8ff66383ffb690e5555b5
+
+---- Explained:
+https://www.youropenplatform.com/verify/?token=TOKEN~SIGNATURE
+```
+
+**How to check signature and how to sign it?**
+
+```
+// "Secret" tokens can only be obtained directly from the OpenPlatform.
+var reqtoken = 'ABCDEF'
+var restoken = 'GHIJKL';
+
+var openplatform = YourQueryArguments.openplatform || '';
+var data = openplatform.split('~');
+
+// data[0]: https://www.youropenplatform.com/verify/?token=123456
+// data[1]: 98e8b5969ce8ff66383ffb690e5555b5
+
+// Verify that the request is properly signed
+if ((data[0] + reqtoken).md5() === data[1]) {
+
+    // The request signature must be signed again with the response token
+    var signature = (data[1] + restoken).md5();
+    // signature: 5dd81302a6755d1fe537e0a5ac630e0d
+
+    // Then we can obtain a user profile
+    var user = await RESTBuilder.GET(openplatform).header('x-token', signature).promise();
+    console.log('User profile:', user);
+
+} else
+    throw new Error('Invalid token');
+```
+
+You can get tokens in OpenPlatform, click on the Setup section, open applications and register a new application. You will see the App form like this:
+
+![Image 1: App security tokens](https://docs.totaljs.com/download/IxpZTS1c961f-14ptykc-600x124-1.jpg)
+
+User profile
+------------
+
+OpenPlatform returns a user profile in JSON format.
+
+**Example**:
+
+```
+{
+    id: 'x56n001gl41d',
+    portal: {
+        name: 'OpenPlatform name',
+        logo: '...',
+        groups: [{ id: 'groupid', name: 'Group name' }],
+        apps: [{ id: 'appid', name: 'App name', icon: '', color: '', url: '' }]
+    }
+    openplatformid: 'yqxqvmqjsvwtywg',
+    email: 'petersigkra@gmail.com',
+    name: 'Peter Širka',
+    photo: 'https://www.youropenplatform.com/files/x977001ae41dX1npkfcj.jpg',
+    sa: true,
+    gender: 'male',
+    color: '#4285F4',
+    darkmode: 0,
+    sounds: true,
+    notifications: true,
+    notify: 'https://www.youropenplatform.com/notify/?token=123456',
+    openplatform: 'https://www.youropenplatform.com',
+    dtcreated: 2023-01-09T20:47:15.338Z,
+    dtupdated: 2023-01-13T10:30:31.849Z,
+    permissions: ['read', 'write'],
+    groups: ['z8aw001wo41d']
+}
+```
+
+**How to create notifications?**
+
+```
+// Tokens are obtained from the OpenPlatform
+var reqtoken = 'ABCDEF';
+var restoken = 'GHIJKL';
+
+var notify = user.notify;
+// notify: https://www.youropenplatform.com/notify/?token=123456
+
+var signature = ((notify + reqtoken).md5() + restoken).md5();
+// signature: da4e9d46bc93b8e70a6eb4ace0cfcd73
+
+// Model
+var model = {};
+
+model.body = 'A notification message'; // required, a simple HTML format can be used.
+model.icon = 'ti ti-home'; // optional, Total.js Icon - https://cdn.componentator.com/icons.html
+model.color = '#E73323'; // optional, must be defined in HEX
+model.path = ''; // optional, third-party apps will receive this value from OpenPlatform.
+
+// Sends a notification
+var response = await RESTBuilder.POST(notify, model).header('x-token', signature).promise();
+```
+
+* * *
+
+**Are you Total.js developer?**
+
+If you want to use the Total.js framework for your OpenPlatform application, then continue/download with the [**Total.js OpenPlatform app template**](https://github.com/totaljs/openplatform-application) and skip the steps below. **Be careful:** URL address must be the same as is defined in `openplatform.json`.
+**Good to know**:
+
+*   each OpenPlatform application is running under **`<iframe>`** element
+*   create SPA (single page application) as OpenPlatform application
+*   make all requests from the client-side asynchronously
+*   cookies won't work in your OpenPlatform applications
+
+
+Request Token: gi23t9nzgxgp59xr4q1ynjhqvqtejgfriwqclgem2
+Response Token: 9a3mg723udpj16uyqdpc2fph4022ruy4ewg3wf8pu
