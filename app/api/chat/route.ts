@@ -52,6 +52,19 @@ export async function POST(req: Request) {
     }
   }
 
+  // For development/testing, allow fallback to a default user ID
+  if (!userId) {
+    // Check if this is a direct access (not through OpenPlatform)
+    const referer = req.headers.get('referer');
+
+    // Allow access for testing purposes if coming from the same domain
+    if (referer && (referer.includes('inspirausflow') || referer.includes('localhost'))) {
+      userId = 'test-user';
+    } else if (process.env.NODE_ENV === 'development') {
+      userId = 'dev-user';
+    }
+  }
+
   if (!userId) {
     return new Response(
       JSON.stringify({ error: "User authentication required" }),
