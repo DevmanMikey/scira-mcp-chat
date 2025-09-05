@@ -39,10 +39,8 @@ export default function RootLayout({
             <ChatSidebar />
             <main className="flex-1 flex flex-col relative">
               <div className="absolute top-4 left-4 z-50">
-                <SidebarTrigger>
-                  <button className="flex items-center justify-center h-8 w-8 bg-muted hover:bg-accent rounded-md transition-colors">
-                    <Menu className="h-4 w-4" />
-                  </button>
+                <SidebarTrigger className="flex items-center justify-center h-8 w-8 bg-muted hover:bg-accent rounded-md transition-colors border border-border">
+                  <Menu className="h-4 w-4" />
                 </SidebarTrigger>
               </div>
               <div className="flex-1 flex justify-center">{children}</div>
