@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ChatSidebar } from "@/components/chat-sidebar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Menu } from "lucide-react";
 import { Providers } from "./providers";
+// import { useOpenPlatformUser } from "@/lib/hooks/use-openplatform-user";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
 import { BotIdClient } from "botid/client";
+import { AuthOverlay } from "@/components/auth-overlay";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,11 +16,8 @@ export const metadata: Metadata = {
   description: "A modern AI chat application with MCP integration.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -33,21 +30,17 @@ export default function RootLayout({
           ]}
         />
       </head>
-      <body className={`${inter.className}`}>
+      <body className={`${inter.className}`}> 
         <Providers>
-          <div className="flex h-dvh w-full">
-            <ChatSidebar />
-            <main className="flex-1 flex flex-col relative">
-              <div className="absolute top-4 left-4 z-50">
-                <SidebarTrigger className="flex items-center justify-center h-8 w-8 bg-muted hover:bg-accent rounded-md transition-colors border border-border">
-                  <Menu className="h-4 w-4" />
-                </SidebarTrigger>
-              </div>
-              <div className="flex-1 flex justify-center">{children}</div>
-            </main>
-          </div>
+          <AuthOverlay />
+          <ChatSidebar />
+          <main className="flex-1 flex flex-col relative">
+            <div className="flex-1 flex justify-center pt-16 md:pt-0">{children}</div>
+          </main>
         </Providers>
       </body>
     </html>
   );
 }
+
+

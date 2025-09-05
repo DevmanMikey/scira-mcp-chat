@@ -9,26 +9,44 @@ type SetValue<T> = T | ((val: T) => T);
  * @returns A stateful value and a function to update it
  */
 export function useLocalStorage<T>(key: string, initialValue: T) {
+  // Check if we're in the browser environment and localStorage is available
+  const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+  // Initialize state from localStorage synchronously if in browser
+  const getInitialValue = (): T => {
+    if (!isBrowser) return initialValue;
+    
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item !== null) {
+        return parseJSON(item);
+      }
+    } catch (error) {
+      console.error(`Error reading localStorage key "${key}":`, error);
+    }
+    return initialValue;
+  };
+
   // State to store our value
-  // Pass initial state function to useState so logic is only executed once
-  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [storedValue, setStoredValue] = useState<T>(getInitialValue);
 
-  // Check if we're in the browser environment
-  const isBrowser = typeof window !== 'undefined';
-
-  // Initialize state from localStorage or use initialValue
+  // Handle hydration mismatch by updating state after mount if needed
   useEffect(() => {
     if (!isBrowser) return;
 
     try {
       const item = window.localStorage.getItem(key);
-      if (item) {
-        setStoredValue(parseJSON(item));
+      if (item !== null) {
+        const parsedValue = parseJSON(item) as T;
+        // Only update if the value is different to avoid unnecessary re-renders
+        if (JSON.stringify(parsedValue) !== JSON.stringify(storedValue)) {
+          setStoredValue(parsedValue);
+        }
       }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
     }
-  }, [key, isBrowser]);
+  }, [key, isBrowser, storedValue]);
 
   // Return a wrapped version of useState's setter function that
   // persists the new value to localStorage.

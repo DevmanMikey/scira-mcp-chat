@@ -59,8 +59,8 @@ export function ChatSidebar() {
   const pathname = usePathname();
   const [mcpSettingsOpen, setMcpSettingsOpen] = useState(false);
   const [apiKeySettingsOpen, setApiKeySettingsOpen] = useState(false);
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  // Force sidebar to always be expanded for debugging
+  const isCollapsed = false;
 
   // Get MCP server data from context
   const {
@@ -118,9 +118,41 @@ export function ChatSidebar() {
   const activeServersCount = selectedMcpServers.length;
 
   // Show loading state if user is not yet loaded
-  if (userLoading || !openPlatformUser) {
-    return null; // Or a loading spinner
+  if (userLoading) {
+    return (
+      <div style={{ width: '16rem', border: '3px solid red', minHeight: '100vh', background: '#222', color: '#fff', zIndex: 9999 }}>
+        <SidebarHeader className="p-4 border-b border-border/40">
+          <div className="flex items-center justify-center">
+            <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-primary animate-pulse" />
+            </div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="flex flex-col h-[calc(100vh-8rem)]">
+          <SidebarGroup className="flex-1 min-h-0">
+            <SidebarGroupContent className="overflow-y-auto pt-1">
+              <SidebarMenu>
+                {Array(3).fill(0).map((_, index) => (
+                  <SidebarMenuItem key={`loading-${index}`}>
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                      <Skeleton className="h-4 w-full max-w-[180px]" />
+                    </div>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="p-4 border-t border-border/40">
+          <Skeleton className="h-10 w-full rounded-md" />
+        </SidebarFooter>
+  </div>
+    );
   }
+
+  // If no user at all, don't render sidebar
+  // Always show the sidebar, even if no user is loaded
 
   // Create chat loading skeletons
   const renderChatSkeletons = () => {
@@ -146,10 +178,8 @@ export function ChatSidebar() {
   };
 
   return (
-    <Sidebar
-      className="shadow-sm bg-background/80 dark:bg-background/40 backdrop-blur-md"
-      collapsible="icon"
-    >
+    <div className="shadow-sm bg-background/80 dark:bg-background/40 backdrop-blur-md min-h-screen w-64 relative">
+  {/* Overlay moved to layout for full-screen coverage */}
       <SidebarHeader className="p-4 border-b border-border/40">
         <div className="flex items-center justify-start">
           <div
@@ -168,7 +198,7 @@ export function ChatSidebar() {
             </div>
             {!isCollapsed && (
               <div className="font-semibold text-lg text-foreground/90">
-                MCP
+                Inspiraus Flow
               </div>
             )}
           </div>
@@ -493,6 +523,6 @@ export function ChatSidebar() {
           onOpenChange={setApiKeySettingsOpen}
         />
       </SidebarFooter>
-    </Sidebar>
+  </div>
   );
 }

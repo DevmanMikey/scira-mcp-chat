@@ -2,12 +2,13 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLocalStorage } from "@/lib/hooks/use-local-storage";
-import { STORAGE_KEYS } from "@/lib/constants";
+// import { useLocalStorage } from "@/lib/hooks/use-local-storage";
+// import { STORAGE_KEYS } from "@/lib/constants";
 import { MCPProvider } from "@/lib/context/mcp-context";
+import { Menu } from "lucide-react";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -19,12 +20,8 @@ const queryClient = new QueryClient({
   },
 });
 
-export function Providers({ children }: { children: ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
-    STORAGE_KEYS.SIDEBAR_STATE,
-    true
-  );
 
+export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -35,12 +32,17 @@ export function Providers({ children }: { children: ReactNode }) {
         themes={["light", "dark", "sunset", "black"]}
       >
         <MCPProvider>
-          <SidebarProvider defaultOpen={sidebarOpen} open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            {children}
+          <SidebarProvider open={true}>
+            <div className="flex h-dvh w-full relative">
+              {/* SidebarTrigger removed for always-on sidebar */}
+              {children}
+            </div>
             <Toaster position="top-center" richColors />
           </SidebarProvider>
         </MCPProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
-} 
+}
+
+
