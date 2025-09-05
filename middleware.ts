@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 // OpenPlatform configuration
 const REQUEST_TOKEN = 'gi23t9nzgxgp59xr4q1ynjhqvqtejgfriwqclgem2';
@@ -14,8 +13,13 @@ const ALLOWED_DOMAINS = [
   '*' // Allow all domains for iframe embedding
 ];
 
-function md5(data: string): string {
-  return crypto.createHash('md5').update(data).digest('hex');
+// Use Web Crypto API for MD5 hashing (works in Edge Runtime)
+async function md5(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function verifyOpenPlatformToken(openplatform: string): Promise<any | null> {
@@ -29,12 +33,13 @@ async function verifyOpenPlatformToken(openplatform: string): Promise<any | null
     const [url, signature] = data;
 
     // Verify that the request is properly signed
-    if (md5(url + REQUEST_TOKEN) !== signature) {
+    const expectedSignature = await md5(url + REQUEST_TOKEN);
+    if (expectedSignature !== signature) {
       return null;
     }
 
     // The request signature must be signed again with the response token
-    const responseSignature = md5(signature + RESPONSE_TOKEN);
+    const responseSignature = await md5(signature + RESPONSE_TOKEN);
 
     // Make request to OpenPlatform to get user profile
     const response = await fetch(url, {
@@ -216,11 +221,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

@@ -25,6 +25,11 @@ export async function GET(request: Request, context: RouteContext) {
       }
     }
 
+    // For development/testing, allow fallback to a default user ID
+    if (!userId && process.env.NODE_ENV === 'development') {
+      userId = 'dev-user';
+    }
+
     if (!userId) {
       return NextResponse.json({ error: "User authentication required" }, { status: 401 });
     }
@@ -64,6 +69,11 @@ export async function DELETE(request: Request, context: RouteContext) {
           console.error('Failed to parse OpenPlatform user data:', error);
         }
       }
+    }
+
+    // For development/testing, allow fallback to a default user ID
+    if (!userId && process.env.NODE_ENV === 'development') {
+      userId = 'dev-user';
     }
 
     if (!userId) {

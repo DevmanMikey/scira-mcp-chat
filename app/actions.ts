@@ -1,8 +1,7 @@
 "use server";
 
 import { groq } from "@ai-sdk/groq";
-import { openai } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
 // Helper to extract text content from a message regardless of format
@@ -52,15 +51,16 @@ export async function generateTitle(messages: any[]): Promise<string> {
       return 'New Chat';
     }
 
-    const { object: titleObject } = await generateObject({
+    // Use a simpler approach with text generation instead of object generation
+    const { text: titleText } = await generateText({
       model: groq('llama-3.1-8b-instant'),
-      schema: z.object({
-        title: z.string().describe("A short, descriptive title for the conversation"),
-      }),
-      prompt: `Generate a concise title (max 6 words) for a conversation that starts with: "${messageText.slice(0, 200)}"`,
+      prompt: `Generate a concise title (max 6 words) for this conversation: "${messageText.slice(0, 100)}". Just return the title, nothing else.`,
     });
 
-    return titleObject.title || 'New Chat';
+    // Clean up the title
+    const cleanTitle = titleText.trim().replace(/^["']|["']$/g, '').slice(0, 50);
+
+    return cleanTitle || 'New Chat';
   } catch (error) {
     console.error('Error generating title:', error);
     return 'New Chat';

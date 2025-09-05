@@ -4,7 +4,7 @@ import { checkBotId } from "botid/server";
 
 export async function GET(request: Request) {
   try {
-    // Get user ID from OpenPlatform cookie
+    // Get user ID from OpenPlatform cookie (set by middleware)
     let userId: string | null = null;
     const cookies = request.headers.get('cookie');
     if (cookies) {
@@ -17,6 +17,11 @@ export async function GET(request: Request) {
           console.error('Failed to parse OpenPlatform user data:', error);
         }
       }
+    }
+
+    // For development/testing, allow fallback to a default user ID
+    if (!userId && process.env.NODE_ENV === 'development') {
+      userId = 'dev-user';
     }
 
     if (!userId) {
