@@ -1,0 +1,14 @@
+{
+  "id": "scira-mcp-chat",
+  "name": "SCIRA MCP Chat",
+  "origin": "https://your-app-domain",
+  "url": "https://your-app-domain",
+  "icon": "/scira.png",
+  "color": "#3B82F6",
+  "version": "1.0.0",
+  "author": "Your Name or Company",
+  "email": "your@email.com",
+  "permissions": ["profile", "email"],
+  "services": [],
+  "description": "Chat application integrated with OpenPlatform."
+}
