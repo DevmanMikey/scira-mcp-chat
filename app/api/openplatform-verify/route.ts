@@ -8,9 +8,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing verifyUrl or responseSignature' }, { status: 400 });
     }
 
-    const res = await fetch(verifyUrl, {
-      headers: { 'x-token': responseSignature },
-    });
+    const url = new URL(verifyUrl);
+    url.searchParams.set('signature', responseSignature);
+    const res = await fetch(url.toString());
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Failed to fetch from OpenPlatform' }, { status: res.status });
