@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { verifyUrl, responseSignature } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const verifyUrl = searchParams.get('verifyUrl');
+    const responseSignature = searchParams.get('responseSignature');
 
     if (!verifyUrl || !responseSignature) {
       return NextResponse.json({ error: 'Missing verifyUrl or responseSignature' }, { status: 400 });
     }
 
     const url = new URL(verifyUrl);
-    url.searchParams.set('signature', responseSignature);
-    const res = await fetch(url.toString());
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'x-token': responseSignature,
+      },
+    });
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Failed to fetch from OpenPlatform' }, { status: res.status });
