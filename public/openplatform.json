@@ -1,13 +1,13 @@
 {
-  "id": "scira-mcp-chat",
-  "name": "SCIRA MCP Chat",
-  "origin": "https://your-app-domain",
-  "url": "https://your-app-domain",
+  "id": "inspiraus-flow-chat",
+  "name": "Flow Chat",
+  "origin": "https://inspirausflow.vercel.app", // <-- Replace with your deployed app URL, no trailing slash
+  "url": "https://inspirausflow.vercel.app", // <-- Replace with your deployed app URL, no trailing slash
   "icon": "/scira.png",
   "color": "#3B82F6",
   "version": "1.0.0",
-  "author": "Your Name or Company",
-  "email": "your@email.com",
+  "author": "Inspriraus: Mike Bentkley",
+  "email": "mike@inspiraus.com",
   "permissions": ["profile", "email"],
   "services": [],
   "description": "Chat application integrated with OpenPlatform."
