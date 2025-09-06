@@ -41,6 +41,7 @@ export function useOpenPlatformUser() {
       try {
         const params = new URLSearchParams(window.location.search);
         const openplatform = params.get('openplatform');
+        console.log('[OpenPlatform] OpenPlatform param:', openplatform);
         if (!openplatform) {
           console.warn('[OpenPlatform] No openplatform param in URL');
           setUser(null);
@@ -60,9 +61,10 @@ export function useOpenPlatformUser() {
 
         // openplatform param is encoded, decode it
         const decoded = decodeURIComponent(openplatform);
+        console.log('[OpenPlatform] Decoded param:', decoded);
         // Split signature
         const [verifyUrl, signature] = decoded.split('~');
-        console.log('[OpenPlatform] Decoded param:', { verifyUrl, signature });
+        console.log('[OpenPlatform] Verify URL and signature:', { verifyUrl, signature });
         if (!verifyUrl || !signature) {
           console.error('[OpenPlatform] Invalid openplatform param format', { decoded });
           setUser(null);
@@ -71,6 +73,7 @@ export function useOpenPlatformUser() {
         }
         // Validate signature
         const expectedSig = md5(verifyUrl + REQ_TOKEN);
+        console.log('[OpenPlatform] Expected signature:', expectedSig);
         if (expectedSig !== signature) {
           console.error('[OpenPlatform] Signature invalid', { verifyUrl, expectedSig, signature });
           setUser(null);
@@ -84,6 +87,7 @@ export function useOpenPlatformUser() {
         const res = await fetch(verifyUrl, {
           headers: { 'x-token': responseSignature },
         });
+        console.log('[OpenPlatform] Fetch response status:', res.status, res.statusText);
         if (!res.ok) {
           console.error('[OpenPlatform] Profile fetch failed', { status: res.status, statusText: res.statusText });
           setUser(null);
@@ -91,9 +95,9 @@ export function useOpenPlatformUser() {
           return;
         }
         const userData = await res.json();
-        console.log('[OpenPlatform] User profile received', userData);
+        console.log('[OpenPlatform] Raw user data received:', userData);
         // Map missing fields to ensure the user object matches expected shape
-        setUser({
+        const mappedUser = {
           ...userData,
           portal: userData.portal || null,
           openplatformid: userData.openplatformid || userData.id || '',
@@ -102,7 +106,9 @@ export function useOpenPlatformUser() {
           dtupdated: userData.dtupdated || '',
           permissions: userData.permissions || [],
           groups: userData.groups || [],
-        });
+        };
+        console.log('[OpenPlatform] Mapped user object:', mappedUser);
+        setUser(mappedUser);
       } catch (err) {
         console.error('[OpenPlatform] Exception during auth', err);
         setUser(null);
