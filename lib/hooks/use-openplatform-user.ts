@@ -84,8 +84,11 @@ export function useOpenPlatformUser() {
         const responseSignature = signature;
         console.log('[OpenPlatform] Fetching user profile via API route', { verifyUrl, responseSignature });
         // Fetch user profile via API route to bypass CORS
-        const res = await fetch(`/api/openplatform-verify?verifyUrl=${encodeURIComponent(verifyUrl)}&responseSignature=${encodeURIComponent(responseSignature)}`, {
+        const res = await fetch(`/api/openplatform-verify?verifyUrl=${encodeURIComponent(verifyUrl)}`, {
           method: 'GET',
+          headers: {
+            'x-token': responseSignature,
+          },
         });
         console.log('[OpenPlatform] Fetch response status:', res.status, res.statusText);
         if (!res.ok) {
