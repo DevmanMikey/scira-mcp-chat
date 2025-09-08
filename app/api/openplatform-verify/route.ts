@@ -9,7 +9,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const verifyUrl = searchParams.get('verifyUrl');
-    const responseSignature = request.headers.get('x-token');
+    // Accept x-token from header or query string
+    let responseSignature = request.headers.get('x-token');
+    if (!responseSignature) {
+      responseSignature = searchParams.get('x-token');
+    }
     if (!verifyUrl || !responseSignature) {
       return NextResponse.json({ error: 'Missing verifyUrl or responseSignature' }, { status: 400 });
     }
