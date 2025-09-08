@@ -4,7 +4,6 @@ import { ChatSidebar } from "@/components/chat-sidebar";
 import { Providers } from "./providers";
 // import { useOpenPlatformUser } from "@/lib/hooks/use-openplatform-user";
 import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
 import { BotIdClient } from "botid/client";
 import { AuthOverlay } from "@/components/auth-overlay";
