@@ -1,0 +1,24 @@
+<script total>
+exports.id='opsignaturevalidator';
+exports.name='SignatureValidator';
+exports.icon='ti ti-lock-check';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='OpenPlatform';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'next',name:'Next'},{id:'fail',name:'Fail'}];
+exports.config={ requestToken:'', mode:'diagnostic' }; // mode: diagnostic|enforce
+exports.make=function(inst,config){
+  const md5=(F && F.md5)?F.md5: (typeof MD5!=='undefined'?MD5:function(s){return s;});
+  inst.message=function($){
+    const data=$.data||{}; if(!data.openplatform||!config.requestToken) return $.send('next',data);
+    const op=data.openplatform; op.expected=md5(op.verifyUrl + config.requestToken);
+    if(op.expected!==op.signature && config.mode==='enforce') return $.send('fail',{ error:'signature mismatch', expected:op.expected, got:op.signature });
+    $.send('next',data);
+  };
+};
+</script>
+<readme>
+# SignatureValidator
+Computes expected signature; optionally enforces match.
+</readme>

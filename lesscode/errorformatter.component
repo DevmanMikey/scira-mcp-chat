@@ -1,0 +1,24 @@
+<script total>
+exports.id='errorformatter';
+exports.name='ErrorFormatter';
+exports.icon='ti ti-alert-octagon';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'out',name:'Out'}];
+exports.config={ defaultStatus:500, expose:false };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{};
+    let body=data.error? data : { error:'Unknown error' };
+    if(!config.expose){ delete body.stack; }
+    body.status=body.status||config.defaultStatus;
+    $.send('out',{ status:body.status, body });
+  };
+};
+</script>
+<readme>
+# ErrorFormatter
+Produces consistent error body.
+</readme>

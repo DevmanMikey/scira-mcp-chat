@@ -1,0 +1,27 @@
+<script total>
+exports.id='opupsigner';
+exports.name='UpstreamSigner';
+exports.icon='ti ti-signature';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='OpenPlatform';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'next',name:'Next'}];
+exports.config={ responseToken:'' };
+exports.make=function(inst,config){
+  const md5=(F && F.md5)?F.md5: (typeof MD5!=='undefined'?MD5:function(s){return s;});
+  inst.message=function($){
+    const data=$.data||{}; if(!config.responseToken||!data.openplatform) return $.send('next',data);
+    data.req=data.req||{}; data.req.headers=data.req.headers||{};
+    const sig=data.openplatform.signature;
+    data.req.headers['x-token']=md5(sig + config.responseToken);
+    data.req.headers['x-openplatform-signature']=sig;
+    data.req.headers['x-openplatform-token']=data.openplatform.raw;
+    $.send('next',data);
+  };
+};
+</script>
+<readme>
+# UpstreamSigner
+Adds signing headers for OpenPlatform upstream verify call.
+</readme>

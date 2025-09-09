@@ -1,0 +1,42 @@
+<script total>
+exports.id='cachelayer';
+exports.name='CacheLayer';
+exports.icon='ti ti-database';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'hit',name:'Hit'},{id:'miss',name:'Miss'}];
+exports.config={ ttl:5000, varyMethod:true, maxEntries:500 };
+exports.memory={};
+exports.make=function(inst,config){
+  function prune(){
+    const keys=Object.keys(inst.memory);
+    if(keys.length>config.maxEntries){
+      keys.sort((a,b)=>inst.memory[a].expire-inst.memory[b].expire);
+      for(let i=0;i<Math.ceil(keys.length/10);i++) delete inst.memory[keys[i]];
+    }
+  }
+  inst.message=function($){
+    const data=$.data||{}; const req=data.req||{};
+    const key=(config.varyMethod?(req.method||'GET')+':':'') + (req.upstreamPath||req.url||'/');
+    const now=Date.now();
+    const entry=inst.memory[key];
+    if(entry && entry.expire>now){
+      data.upstream=entry.value; data.cache='hit';
+      return $.send('hit',data);
+    }
+    data._cachekey=key; data.cache='miss';
+    $.send('miss',data);
+  };
+  inst.custom.store=function(data){
+    if(!data || !data._cachekey || !data.upstream) return;
+    inst.memory[data._cachekey]={ value:data.upstream, expire:Date.now()+config.ttl };
+    prune();
+  };
+};
+</script>
+<readme>
+# CacheLayer
+In-memory TTL cache with manual store via custom.store(data).
+</readme>

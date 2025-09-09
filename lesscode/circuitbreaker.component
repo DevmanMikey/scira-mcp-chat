@@ -1,0 +1,31 @@
+<script total>
+exports.id='circuitbreaker';
+exports.name='CircuitBreaker';
+exports.icon='ti ti-activity-heartbeat';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'pass',name:'Pass'},{id:'open',name:'Open'}];
+exports.config={ threshold:5, windowMs:60000, cooldownMs:15000 };
+exports.state={ fails:[], openUntil:0 };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const now=Date.now();
+    if(inst.state.openUntil>now) return $.send('open',{ error:'circuit open', retryAt:inst.state.openUntil });
+    inst.state.fails=inst.state.fails.filter(ts=>ts>now-config.windowMs);
+    $.send('pass',$.data);
+  };
+  inst.custom.fail=function(){
+    const now=Date.now();
+    inst.state.fails.push(now);
+    inst.state.fails=inst.state.fails.filter(ts=>ts>now-config.windowMs);
+    if(inst.state.fails.length>=config.threshold) inst.state.openUntil=now+config.cooldownMs;
+  };
+  inst.custom.success=function(){ inst.state.fails.length=0; };
+};
+</script>
+<readme>
+# CircuitBreaker
+Tracks failures; opens circuit when threshold reached.
+</readme>

@@ -1,0 +1,35 @@
+<script total>
+exports.id='proxyrouter';
+exports.name='ProxyRouter';
+exports.icon='ti ti-router';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'next',name:'Next'},{id:'bypass',name:'Bypass'}];
+exports.config={ basepath:'', stripPrefix:'', debug:false };
+
+exports.make=function(inst,config){
+  function normalize(path){
+    if(!path) return '/';
+    if(!path.startsWith('/')) path='/' + path;
+    return path.replace(/\\+/g,'/');
+  }
+  inst.message=function($){
+    const data=$.data||{}; const req=data.req||$.req||{};
+    req.url=req.url||req.path||'/';
+    if(config.stripPrefix && req.url.startsWith(config.stripPrefix)){
+      req.url=req.url.substring(config.stripPrefix.length)||'/';
+    }
+    if(config.basepath){
+      req.upstreamPath=(config.basepath.replace(/\/$/,'') + '/' + req.url.replace(/^\//,'')).replace(/\/+/g,'/');
+    } else req.upstreamPath=normalize(req.url);
+    if(config.debug) req._proxyrouter={ upstreamPath:req.upstreamPath };
+    $.send('next',{ req });
+  };
+};
+</script>
+<readme>
+# ProxyRouter
+Normalizes request path, optional prefix stripping, basepath prepend.
+</readme>

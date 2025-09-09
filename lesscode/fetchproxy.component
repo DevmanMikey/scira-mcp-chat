@@ -1,0 +1,39 @@
+<script total>
+exports.id='fetchproxy';
+exports.name='FetchProxy';
+exports.icon='ti ti-cloud-download';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'done',name:'Done'},{id:'error',name:'Error'}];
+exports.config={ origin:'', timeout:8000, forwardHeaders:'accept,accept-language,authorization,cookie,content-type,x-openplatform-signature,x-openplatform-token,x-token', debug:false };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{}; const req=data.req||{};
+    if(!config.origin) return $.send('error',{ error:'missing origin' });
+    const base=config.origin.replace(/\/$/,'');
+    const path=req.upstreamPath||req.url||'/';
+    const url=base + path;
+    const fwd=(config.forwardHeaders||'').split(/[,\s]+/).filter(Boolean).map(h=>h.toLowerCase());
+    const headers={};
+    if(req.headers){
+      for(const k in req.headers){
+        if(fwd.includes(k.toLowerCase())) headers[k]=req.headers[k];
+      }
+    }
+    const opt={ method:(req.method||'GET').toUpperCase(), headers, timeout:config.timeout };
+    if(req.body && !['GET','HEAD'].includes(opt.method)) opt.body=req.body;
+    const started=Date.now();
+    U.request(url,opt,function(err,res){
+      if(err) return $.send('error',{ error:'upstream failure', detail:err+'', url });
+      data.upstream={ status:res.statusCode, headers:res.headers, body:res.body, duration:Date.now()-started, url };
+      $.send('done',data);
+    });
+  };
+};
+</script>
+<readme>
+# FetchProxy
+Fetches upstream (buffered). Adds duration ms.
+</readme>

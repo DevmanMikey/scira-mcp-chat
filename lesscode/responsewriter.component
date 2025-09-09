@@ -1,0 +1,45 @@
+<script total>
+exports.id='responsewriter';
+exports.name='ResponseWriter';
+exports.icon='ti ti-send';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Proxy';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'out',name:'Out'}];
+exports.config={ defaultStatus:200 };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{};
+    // If structured error from ErrorFormatter
+    if(data.body && data.status){
+      $.res.setHeader('content-type','application/json');
+      $.res.statusCode=data.status;
+      $.res.end(JSON.stringify(data.body));
+      return $.send('out',data);
+    }
+    const up=data.upstream;
+    if(!up){
+      $.res.statusCode=config.defaultStatus;
+      $.res.setHeader('content-type','application/json');
+      $.res.end(JSON.stringify({ ok:false }));
+      return $.send('out',data);
+    }
+    // Copy headers (simple)
+    if(up.headers){
+      for(const k in up.headers){
+        if(k.toLowerCase()==='content-length') continue; // recalc
+        try { $.res.setHeader(k, up.headers[k]); } catch { }
+      }
+    }
+    if(!$.res.getHeader('content-type')) $.res.setHeader('content-type','application/octet-stream');
+    $.res.statusCode=up.status||200;
+    $.res.end(up.body);
+    $.send('out',data);
+  };
+};
+</script>
+<readme>
+# ResponseWriter
+Writes upstream/body or formatted error to HTTP response.
+</readme>

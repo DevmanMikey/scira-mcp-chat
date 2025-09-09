@@ -1,0 +1,22 @@
+<script total>
+exports.id='metricsemitter';
+exports.name='MetricsEmitter';
+exports.icon='ti ti-chart-bar';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Observability';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'out',name:'Out'}];
+exports.config={ channel:'metrics' };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{}; const up=data.upstream||{};
+    FLOW.emit(config.channel,{ path:data.req?data.req.upstreamPath:null, status:up.status, duration:up.duration, cache:data.cache });
+    $.send('out',data);
+  };
+};
+</script>
+<readme>
+# MetricsEmitter
+Emits simple metric event via FLOW.emit.
+</readme>

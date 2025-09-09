@@ -1,0 +1,33 @@
+<script total>
+exports.id='optokenparser';
+exports.name='OpenPlatformTokenParser';
+exports.icon='ti ti-key';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='OpenPlatform';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'ok',name:'OK'},{id:'error',name:'Error'}];
+exports.config={ param:'openplatform', legacyParam:'verifyUrl' };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{}; const req=data.req||$.req||{}; const q=req.query||{};
+    const raw=q[config.param]||q[config.legacyParam];
+    if(!raw) return $.send('error',{ error:'missing token' });
+    try{
+      const decoded=decodeURIComponent(raw);
+      const idx=decoded.lastIndexOf('~');
+      if(idx===-1) return $.send('error',{ error:'malformed token' });
+      const verifyUrl=decoded.substring(0,idx);
+      const signature=decoded.substring(idx+1);
+      data.openplatform={ raw:decoded, verifyUrl, signature };
+      $.send('ok',data);
+    }catch(e){
+      $.send('error',{ error:'decode failure', detail:e+'' });
+    }
+  };
+};
+</script>
+<readme>
+# OpenPlatformTokenParser
+Parses `verifyUrl~signature` token from query.
+</readme>

@@ -1,0 +1,27 @@
+<script total>
+exports.id='debugenricher';
+exports.name='DebugEnricher';
+exports.icon='ti ti-bug';
+exports.author='Inspiraus';
+exports.version='1';
+exports.group='Observability';
+exports.inputs=[{id:'in',name:'In'}];
+exports.outputs=[{id:'out',name:'Out'}];
+exports.config={ enabled:false };
+exports.make=function(inst,config){
+  inst.message=function($){
+    const data=$.data||{};
+    if(config.enabled){
+      data.debug=data.debug||{};
+      if(data.openplatform){ data.debug.openplatform={ signature:data.openplatform.signature, expected:data.openplatform.expected }; }
+      if(data.upstream){ data.debug.upstream={ status:data.upstream.status, duration:data.upstream.duration }; }
+      data.debug.cache=data.cache;
+    }
+    $.send('out',data);
+  };
+};
+</script>
+<readme>
+# DebugEnricher
+Adds debug metadata when enabled.
+</readme>
