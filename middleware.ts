@@ -65,7 +65,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // If openplatform param is present, allow request (sidecar will handle validation)
+  // If openplatform param is present, allow request (handled directly by verify route now)
   return NextResponse.next();
 }
 

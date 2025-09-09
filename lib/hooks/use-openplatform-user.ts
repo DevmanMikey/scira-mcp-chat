@@ -32,53 +32,75 @@ export interface OpenPlatformUser {
 export function useOpenPlatformUser() {
   const [user, setUser] = useState<OpenPlatformUser | null>(null);
   const [loading, setLoading] = useState(true);
-
-
+  const [error, setError] = useState<string | null>(null);
+  const [debug, setDebug] = useState<any>(null);
 
   useEffect(() => {
-    // Only parse ?openplatform=... and pass to API route, let backend/sidecar handle validation
     async function fetchUser() {
       setLoading(true);
+      setError(null);
       try {
         const params = new URLSearchParams(window.location.search);
+        // Canonical param is "openplatform"; still accept existing if already URL encoded full token
         const openplatform = params.get('openplatform');
         if (!openplatform) {
           setUser(null);
           setLoading(false);
           return;
         }
-        // Pass openplatform param to API route, which proxies to sidecar
-        const res = await fetch(`/api/openplatform-verify?verifyUrl=${encodeURIComponent(decodeURIComponent(openplatform))}`, {
-          method: 'GET',
-          headers: {
-            // No need for x-token, backend will handle
-          },
-        });
+
+        const url = `/api/openplatform-verify?openplatform=${encodeURIComponent(openplatform)}`;
+        const res = await fetch(url, { method: 'GET' });
+        const payload = await res.json().catch(() => null);
+
         if (!res.ok) {
+          setError(payload?.error || `Verify failed (${res.status})`);
+          setDebug(payload);
           setUser(null);
           setLoading(false);
           return;
         }
-        const userData = await res.json();
-        // Map missing fields to ensure the user object matches expected shape
-        const mappedUser = {
-          ...userData,
-          portal: userData.portal || null,
-          openplatformid: userData.openplatformid || userData.id || '',
-          notify: userData.notify || '',
-          dtcreated: userData.dtcreated || '',
-          dtupdated: userData.dtupdated || '',
-          permissions: userData.permissions || [],
-          groups: userData.groups || [],
+
+        setDebug({ attempt: payload?.attempt, retry: payload?.retry, durationMs: payload?.durationMs, expectedSignature: payload?.expectedSignature, signature: payload?.signature });
+
+        const profile = payload?.profile || payload; // fallback if backend returns raw
+        if (!profile || typeof profile !== 'object') {
+          setError('Invalid profile shape');
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        const mappedUser: OpenPlatformUser = {
+          id: profile.id || profile.openplatformid || '',
+          portal: profile.portal || { name: '', logo: '', groups: [], apps: [] },
+          openplatformid: profile.openplatformid || profile.id || '',
+          email: profile.email || '',
+          name: profile.name || '',
+          photo: profile.photo || '',
+          sa: !!profile.sa,
+          gender: profile.gender || '',
+          color: profile.color || '',
+          darkmode: profile.darkmode || 0,
+          sounds: !!profile.sounds,
+          notifications: !!profile.notifications,
+          notify: profile.notify || '',
+          openplatform: profile.openplatform || '',
+          dtcreated: profile.dtcreated || '',
+          dtupdated: profile.dtupdated || '',
+          permissions: profile.permissions || [],
+          groups: profile.groups || [],
         };
         setUser(mappedUser);
-      } catch (err) {
+      } catch (err: any) {
+        setError(err?.message || 'Unexpected error');
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchUser();
   }, []);
 
-  return { user, loading };
+  return { user, loading, error, debug };
 }

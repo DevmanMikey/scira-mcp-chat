@@ -40,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# OpenPlatform docs (local reference only)
+openplatform.txt
+openplatform-0*.md
+openplatform-01-*.md
+openplatform-02-*.md
+openplatform-03-*.md
+openplatform-04-*.md
+openplatform-05-*.md
+openplatform-06-*.md
+openplatform-07-*.md

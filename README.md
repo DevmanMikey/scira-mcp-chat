@@ -41,10 +41,33 @@ This application supports connecting to Model Context Protocol (MCP) servers to 
 
 You can use any MCP-compatible server with this application. Here are some examples:
 
-- [Composio](https://composio.dev/mcp) - Provides search, code interpreter, and other tools
-- [Zapier MCP](https://zapier.com/mcp) - Provides access to Zapier tools
-- [Hugging Face MCP](https://huggingface.co/mcp) - Provides tool access to Hugging Face Hub
-- Any MCP server compatible with HTTP or SSE transport
+## OpenPlatform Integration
+
+This app implements a minimal OpenPlatform application pattern (no sidecar service).
+
+Key pieces:
+1. `public/openplatform.json` – static metadata (name, icon, color, url, permissions).
+2. `app/api/openplatform-verify/route.ts` – accepts `?openplatform=<encoded verifyUrl~signature>` and:
+  - Parses the token into `verifyUrl` + `signature`.
+  - (Optionally) computes `expectedSignature = md5(verifyUrl + REQUEST_TOKEN)` if `NEXT_PUBLIC_OPENPLATFORM_REQUEST_TOKEN` is set (diagnostic only; mismatch does not block).
+  - Performs fetch to `verifyUrl` with `x-token = md5(signature + RESPONSE_TOKEN)` when `NEXT_PUBLIC_OPENPLATFORM_RESPONSE_TOKEN` is set.
+  - Retries without headers on 400/401 to aid debugging.
+  - Returns JSON: `{ success?, profile, signature, expectedSignature, attempt, retry, durationMs }`.
+3. `lib/hooks/use-openplatform-user.ts` – client hook that reads `?openplatform=` from the URL and retrieves the profile via the API route.
+
+Environment variables:
+```
+NEXT_PUBLIC_OPENPLATFORM_REQUEST_TOKEN=... (optional, for signature diagnostics)
+NEXT_PUBLIC_OPENPLATFORM_RESPONSE_TOKEN=... (optional, for x-token header signing)
+```
+
+How to test locally:
+1. Launch the app (pnpm dev).
+2. Open it inside your OpenPlatform instance after registering the application with the same URL as in `public/openplatform.json`.
+3. Observe network call to `/api/openplatform-verify` – verify `profile` object appears.
+4. If 400/401, compare `signature` vs `expectedSignature` in response to identify token/sign mismatch.
+
+Removed legacy: the previous `openplatform-application` Total.js template and sidecar client were eliminated to avoid duplication and confusion.
 
 ## License
 

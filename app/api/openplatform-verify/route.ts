@@ -3,73 +3,77 @@
 import { NextRequest } from 'next/server';
 import md5 from '@/lib/md5';
 
-// Optional environment tokens (may be required by self-hosted OpenPlatform verification)
 const REQUEST_TOKEN = process.env.NEXT_PUBLIC_OPENPLATFORM_REQUEST_TOKEN || '';
 const RESPONSE_TOKEN = process.env.NEXT_PUBLIC_OPENPLATFORM_RESPONSE_TOKEN || '';
+const DEBUG = process.env.NEXT_PUBLIC_OPENPLATFORM_DEBUG === '1';
 
 export async function GET(request: NextRequest) {
+  const started = Date.now();
   const { searchParams } = new URL(request.url);
   let openplatform = searchParams.get('openplatform');
   if (!openplatform) {
-    // Backwards compatibility: some callers still pass the full token under verifyUrl
     const legacy = searchParams.get('verifyUrl');
     if (legacy) openplatform = legacy;
   }
   if (!openplatform) {
-    return new Response(JSON.stringify({ error: 'Missing openplatform token' }), { status: 401 });
+    return json(401, { error: 'Missing openplatform token' });
   }
   try {
     const decoded = decodeURIComponent(openplatform);
-    // Format expected: <verifyUrl-without-signature>~<signature>
     const tildeIndex = decoded.lastIndexOf('~');
     if (tildeIndex === -1) {
-      return new Response(JSON.stringify({ error: 'Malformed token (no signature separator)' }), { status: 400 });
+      return json(400, { error: 'Malformed token (no signature separator)', tokenSample: decoded.slice(0, 120) });
     }
     const verifyUrl = decoded.substring(0, tildeIndex);
     const signature = decoded.substring(tildeIndex + 1);
 
-    // Optional local validation (won't block if mismatch, just logs) – some deployments use md5(verifyUrl + REQUEST_TOKEN)
+    let expected: string | null = null;
     if (REQUEST_TOKEN) {
-      const expected = md5(verifyUrl + REQUEST_TOKEN);
+      expected = md5(verifyUrl + REQUEST_TOKEN);
       if (expected !== signature) {
-        console.warn('[OpenPlatform] Signature mismatch (continuing anyway)', { verifyUrl, signature, expected });
+        console.warn('[OpenPlatform] Signature mismatch (non-blocking)', { expected, signature });
       }
     }
 
-    // Prepare headers (only include if we have response token + signature)
-    const headers: Record<string, string> = { 'Accept': 'application/json' };
-    if (RESPONSE_TOKEN) {
-      // Typical pattern: x-token = md5(signature + RESPONSE_TOKEN)
-      headers['x-token'] = md5(signature + RESPONSE_TOKEN);
-    }
-    // Also include the raw signature & full token for broader compatibility
-    headers['x-openplatform-signature'] = signature;
-    headers['x-openplatform-token'] = decoded;
+    const attemptHeaders: Record<string, string> = { 'Accept': 'application/json' };
+    if (RESPONSE_TOKEN) attemptHeaders['x-token'] = md5(signature + RESPONSE_TOKEN);
+    attemptHeaders['x-openplatform-signature'] = signature;
+    attemptHeaders['x-openplatform-token'] = decoded;
 
-    let res = await fetch(verifyUrl, { headers });
-
-    // If first attempt fails with 400/401, retry without custom headers except accept
-    if (!res.ok && (res.status === 400 || res.status === 401)) {
-      console.warn('[OpenPlatform] First verify attempt failed, retrying without auth headers', { status: res.status });
-      res = await fetch(verifyUrl);
+    const attempt1 = await fetch(verifyUrl, { headers: attemptHeaders });
+    let retry: Response | null = null;
+    if (!attempt1.ok && (attempt1.status === 400 || attempt1.status === 401)) {
+      retry = await fetch(verifyUrl);
     }
 
-    const text = await res.text();
-    let json: any;
-    try {
-      json = JSON.parse(text);
-    } catch (_e) {
-      return new Response(JSON.stringify({ error: 'Non-JSON verify response', raw: text }), { status: 502 });
+    const finalRes = retry || attempt1;
+    const rawBody = await finalRes.text();
+    let body: any = rawBody;
+    try { body = JSON.parse(rawBody); } catch { /* leave as text */ }
+
+    const basePayload: any = {
+      verifyUrl,
+      signature,
+      expectedSignature: expected,
+      attempt: {
+        status: attempt1.status,
+        ok: attempt1.ok,
+      },
+      retry: retry ? { status: retry.status, ok: retry.ok } : null,
+      durationMs: Date.now() - started,
+    };
+
+    if (!finalRes.ok) {
+      return json(finalRes.status, { ...basePayload, error: 'Verify failed', body });
     }
 
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: 'Verify failed', status: res.status, body: json }), { status: res.status });
-    }
-
-    // Return profile (assuming the verify endpoint returns profile object or array)
-    return new Response(JSON.stringify({ profile: json, signature, verifyUrl }), { status: 200 });
+    return json(200, { ...basePayload, profile: body, success: true });
   } catch (err: any) {
     console.error('[OpenPlatform] Verification error', err);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+    return json(500, { error: 'Internal Server Error', message: err?.message });
   }
+}
+
+function json(status: number, data: any) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 }
