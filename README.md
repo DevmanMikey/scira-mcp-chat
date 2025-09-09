@@ -69,6 +69,33 @@ How to test locally:
 
 Removed legacy: the previous `openplatform-application` Total.js template and sidecar client were eliminated to avoid duplication and confusion.
 
+### Internal Proxy (Optional)
+
+If you prefer an in-app proxy instead of an external Flow / LessCode layer, a universal proxy route is available at `api/proxy/*`.
+
+Usage:
+1. Set `PROXY_TARGET_ORIGIN=https://your-upstream.example.com` (no trailing slash).
+2. Request `/api/proxy/path/to/resource?x=1` -> forwards to `https://your-upstream.example.com/path/to/resource?x=1`.
+3. All major HTTP methods supported (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD).
+
+Features:
+- Streams response bodies (no buffering for large payloads).
+- Forwards most headers; strips hop-by-hop and compression headers.
+- Adds `x-proxy-duration-ms` header for latency diagnostics.
+- Optional debug headers when `PROXY_DEBUG=1`.
+- Basic CORS headers (`*`) — adjust or remove for stricter policies.
+
+Environment variables:
+```
+PROXY_TARGET_ORIGIN=https://upstream.example.com
+PROXY_DEBUG=1           # optional
+```
+
+Notes:
+- If you need to inject auth/signature logic, add it inside the proxy handler before the fetch call.
+- Avoid chaining this proxy through another reverse proxy that also rewrites compression headers, to prevent double compression issues.
+
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
