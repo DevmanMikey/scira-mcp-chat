@@ -1,0 +1,259 @@
+<script total>
+
+// StaticBypass Component
+// Purpose: Detect and short-circuit requests for static/immutable assets (Next.js & common web assets)
+// - Matches configurable path prefixes and file extensions
+// - Classifies as 'immutable' (hashed) or 'static'
+// - Optionally fetches and serves directly (serveMode = 'fetch') or just signals a bypass
+// - Attaches recommended Cache-Control headers
+//
+// Inputs:
+//   message.data.req OR message.req (Flow HTTP context) with at least { url, method, headers }
+// Outputs:
+//   'match' -> { req, classification, cacheControl, immutable, path, served?, status, body, headers }
+//   'miss'  -> passthrough when not matched
+//   'error' -> error object
+//
+// Config:
+//   prefixes       (string, multi-line) e.g. /_next/static\n/_next/image
+//   extensions     (string, comma/space list) e.g. js,css,ico,png,jpg,webp,svg,woff2
+//   immutableRegex (string, JS regex without slashes) e.g. \\.[A-Fa-f0-9]{8,}\\.
+//   maxAgeStatic   (number, seconds) default 3600
+//   maxAgeImmutable(number, seconds) default 31536000
+//   serveMode      (enum: 'signal' | 'fetch') default 'signal'
+//   origin         (string) required if serveMode='fetch' (no trailing slash)
+//   forwardHeaders (string list) headers to forward when fetching
+//   debug          (boolean)
+//
+// Notes:
+//   - This component does not stream in fetch mode; it buffers (simpler). Adapt if large assets require streaming.
+//   - To stream, replace U.request with STREAM or use a dedicated streaming proxy component.
+
+exports.id = 'staticbypass';
+exports.name = 'StaticBypass';
+exports.icon = 'ti ti-shield-check';
+exports.author = 'Inspiraus';
+exports.version = '1';
+exports.group = 'Proxy';
+exports.inputs = [{ id: 'input', name: 'Input' }];
+exports.outputs = [
+  { id: 'match', name: 'Match' },
+  { id: 'miss', name: 'Miss' },
+  { id: 'error', name: 'Error' }
+];
+exports.config = {
+  prefixes: '/_next/static\n/_next/image',
+  extensions: 'js,css,ico,png,jpg,jpeg,webp,avif,gif,svg,woff,woff2,json',
+  immutableRegex: '\\.[A-Fa-f0-9]{8,}(?=\.)',
+  maxAgeStatic: 3600,
+  maxAgeImmutable: 31536000,
+  serveMode: 'signal', // 'signal' | 'fetch'
+  origin: '',
+  forwardHeaders: 'accept,accept-language,range,if-none-match,if-modified-since',
+  debug: false
+};
+
+exports.make = function(instance, config) {
+
+  let prefixList = [];
+  let extSet = new Set();
+  let immutableRe = null;
+  let fwd = [];
+
+  function rebuild() {
+    prefixList = (config.prefixes || '')
+      .split(/\n|\r/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => s.replace(/\/$/, ''));
+    extSet = new Set((config.extensions || '')
+      .split(/[,\s]+/)
+      .map(s => s.trim().replace(/^\./, ''))
+      .filter(Boolean));
+    try { immutableRe = config.immutableRegex ? new RegExp(config.immutableRegex) : null; } catch { immutableRe = null; }
+    fwd = (config.forwardHeaders || '')
+      .split(/[,\s]+/)
+      .map(h => h.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  instance.configure = function() {
+    rebuild();
+  };
+
+  instance.message = function($) {
+    try {
+      const data = $.data || {};
+      const req = data.req || $.req || {};
+      const url = req.url || req.path || '';
+      const method = (req.method || 'GET').toUpperCase();
+
+      if (method !== 'GET' && method !== 'HEAD')
+        return $.send('miss', data); // static assets are only GET/HEAD
+
+      const qindex = url.indexOf('?');
+      const pathOnly = qindex === -1 ? url : url.substring(0, qindex);
+
+      // Quick extension test
+      const lastDot = pathOnly.lastIndexOf('.');
+      if (lastDot === -1) return $.send('miss', data);
+      const ext = pathOnly.substring(lastDot + 1).toLowerCase();
+      if (!extSet.has(ext)) {
+        // Also treat hashed chunk JS without extension list? (skip for now)
+        return $.send('miss', data);
+      }
+
+      // Prefix match
+      let matchedPrefix = null;
+      for (const p of prefixList) {
+        if (p && (pathOnly === p || pathOnly.startsWith(p + '/'))) { matchedPrefix = p; break; }
+      }
+      if (!matchedPrefix && pathOnly[0] === '/' && prefixList.length) {
+        // allow root assets like /favicon.ico if extension matched but no prefix required
+        const rootSpecial = ['favicon.ico','robots.txt','sitemap.xml'];
+        const name = pathOnly.substring(1);
+        if (!rootSpecial.includes(name)) return $.send('miss', data);
+      }
+
+      const immutable = immutableRe ? immutableRe.test(pathOnly) || /\/(_next|static)\//.test(pathOnly) : /\/(_next|static)\//.test(pathOnly);
+      const cacheControl = immutable
+        ? `public, max-age=${config.maxAgeImmutable || 31536000}, immutable`
+        : `public, max-age=${config.maxAgeStatic || 3600}`;
+
+      // Serve vs signal
+      if (config.serveMode === 'fetch') {
+        const origin = config.origin && config.origin.replace(/\/$/, '');
+        if (!origin) return $.send('error', { error: 'StaticBypass: origin required for serveMode=fetch' });
+        const upstreamURL = origin + pathOnly + (qindex === -1 ? '' : url.substring(qindex));
+        const headers = {};
+        if (req.headers) {
+          for (const k in req.headers) {
+            const lk = k.toLowerCase();
+            if (fwd.includes(lk)) headers[k] = req.headers[k];
+          }
+        }
+        const started = Date.now();
+        U.request(upstreamURL, { method: method, headers }, function(err, res) {
+          if (err) return $.send('error', { error: 'Static fetch failed', detail: err + '' });
+          const out = {
+            req,
+            path: pathOnly,
+            classification: immutable ? 'immutable' : 'static',
+            immutable,
+            cacheControl,
+            upstreamURL,
+            served: true,
+            status: res.statusCode,
+            headers: Object.assign({}, res.headers, { 'cache-control': cacheControl, 'x-staticbypass-duration-ms': Date.now() - started }),
+            body: res.body
+          };
+          $.send('match', out);
+        });
+        return;
+      }
+
+      // Signal only
+      $.send('match', {
+        req,
+        path: pathOnly,
+        classification: immutable ? 'immutable' : 'static',
+        immutable,
+        cacheControl,
+        served: false
+      });
+
+    } catch (e) {
+      $.send('error', { error: 'StaticBypass runtime error', detail: e + '' });
+    }
+  };
+
+  instance.close = function() {};
+  instance.vary = function() {};
+  instance.configure();
+};
+
+</script>
+
+<readme>
+# StaticBypass Component
+
+Detects Next.js & common static asset requests early and either:
+- Signals a match (so later dynamic logic can be skipped), or
+- Fetches & serves the asset directly with proper Cache-Control (serveMode = fetch).
+
+## Classification
+- `immutable`: hashed or under `/_next/static/` (long-term cache, immutable)
+- `static`: other recognized assets (shorter cache)
+
+## Outputs
+- `match`: object with metadata (and body when serveMode=fetch)
+- `miss`: not a static asset
+- `error`: internal error or misconfiguration
+
+## Recommended Flow Wiring (signal mode)
+Route → StaticBypass → (match -> ResponseHeadersFast) & (miss -> TokenParser / Proxy chain)
+
+## Config Tips
+- Extend `prefixes` for CDN buckets (e.g. `/assets`)
+- Tweak `immutableRegex` if your build hash pattern differs
+- Use `serveMode=fetch` only if latency improvement outweighs double handling (Flow + Next CDN)
+
+</readme>
+
+<settings>
+  <div class="padding">
+    <div class="m">Prefixes (one per line)</div>
+    <div><textarea data-bind="prefixes" class="monospace" style="height:120px"></textarea></div>
+    <div class="m">Extensions</div>
+    <div><input type="text" data-bind="extensions" class="full" /></div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="m">Immutable regex</div>
+        <input type="text" data-bind="immutableRegex" class="full" />
+      </div>
+      <div class="col-md-3">
+        <div class="m">maxAgeStatic (s)</div>
+        <input type="number" data-bind="maxAgeStatic" />
+      </div>
+      <div class="col-md-3">
+        <div class="m">maxAgeImmutable (s)</div>
+        <input type="number" data-bind="maxAgeImmutable" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="m">Serve mode</div>
+        <select data-bind="serveMode">
+          <option value="signal">signal</option>
+          <option value="fetch">fetch</option>
+        </select>
+      </div>
+      <div class="col-md-8">
+        <div class="m">Origin (for fetch)</div>
+        <input type="text" data-bind="origin" class="full" />
+      </div>
+    </div>
+    <div class="m">Forward headers (fetch mode)</div>
+    <input type="text" data-bind="forwardHeaders" class="full" />
+    <div class="m"><label><input type="checkbox" data-bind="debug" /> Debug</label></div>
+  </div>
+</settings>
+
+<style>
+  .CLASS textarea { font-size:12px; }
+  .CLASS header { font-weight:600; }
+</style>
+
+<script>
+TOUCH(function(exports, reinit){
+  const name = exports.name + ' #' + exports.id;
+  console.log(name, 'initialized' + (reinit ? ' (update)' : ''));
+  exports.configure = function(cfg){ console.log(name, 'configure', cfg); };
+  exports.settings = function(meta){ /* open settings */ };
+});
+</script>
+
+<body>
+  <header><i class="ti ti-shield-check"></i>StaticBypass</header>
+  <footer>Classify & optionally serve static assets early</footer>
+</body>
